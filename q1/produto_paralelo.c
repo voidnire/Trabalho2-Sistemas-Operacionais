@@ -1,159 +1,149 @@
-// gcc produto.c -o prod
+// produto_escalar_paralelo.c
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
-#include <pthread.h>
-#include <unistd.h>
+#include <string.h>
 #include <stdlib.h>
-typedef struct __myarg_t {
-	int tam1;
-	int tam2;
+#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
+#include <errno.h>
+
+typedef struct {
     double *vetor1;
     double *vetor2;
-    double produto_escalar;
-} myarg_t;
+    int start_index;
+    int end_index;
+    double partial_sum;
+} thread_arg_t;
 
-// ------------ TAMANHOS DIFERENTES --------------
-// Função auxiliar para encontrar o menor entre dois números
-int min(int a, int b) {
-    return (a < b) ? a : b;
+void *calcularProdutoEscalarParalelo(void *arg) {
+    thread_arg_t *ta = (thread_arg_t *) arg;
+    double soma_local = 0.0;
+    for (int i = ta->start_index; i < ta->end_index; i++) {
+        soma_local += ta->vetor1[i] * ta->vetor2[i];
+    }
+    ta->partial_sum = soma_local;
+    return NULL;
 }
 
-double calcularProdutoEscalar( //suporta Diferentes Tamanhos
-    double vetorA[], int tamanhoA, 
-    double vetorB[],int tamanhoB
-) {
-    // 1. Encontra o tamanho limite (o menor entre os dois)
-    int tamanho_limite = min(tamanhoA, tamanhoB);
-    double produto_escalar = 0.0;
-    
-    // 2. Verifica se algum vetor é vazio
-    if (tamanho_limite <= 0) {
-        return 0.0; // Produto escalar de vetores vazios ou inválidos é zero
-    }
-    
-    // 3. Loop apenas até o tamanho_limite
-    for (int i = 0; i < tamanho_limite; i++) {
-        produto_escalar += vetorA[i] * vetorB[i];
-    }
-    
-    return produto_escalar;
+static double timespec_diff_seconds(struct timespec a, struct timespec b) {
+    return (b.tv_sec - a.tv_sec) + (b.tv_nsec - a.tv_nsec) / 1e9;
 }
 
-void *mythread(void *arg) { // precisa receber void* e retornar void*
-    myarg_t *m = (myarg_t *) arg;
-    
-     // 1. Encontra o tamanho limite (o menor entre os dois)
-    int tamanho_limite = min(m->tam1, m->tam2);
-    int i;
-    
-    double soma =0.0;
-    
-    // 2. Verifica se algum vetor é vazio
-    if (tamanho_limite <= 0) {
-        return NULL; // Produto escalar de vetores vazios ou inválidos é zero
-    }
-    
-    // 3. Loop apenas até o tamanho_limite
-    for (i = 0; i < tamanho_limite; i++) {
-        soma += m->vetor1[i] * m->vetor2[i];
-    }
-    m->produto_escalar = soma; 
-        
-	return NULL;
-}
-// ------------ TAMANHOS DIFERENTES --------------
+int main(int argc, char *argv[]) {
+    int tam_vetor = 0, num_threads = 0;
+    double *vetor1 = NULL, *vetor2 = NULL;
+    long cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cpus < 1) cpus = 1;
 
-void imprimirVetor(double vetor[], int tamanho) {
-    printf("(");
-    for (int i = 0; i < tamanho; i++) {
-        printf("%.2f%s", vetor[i], (i == tamanho - 1) ? "" : ", ");
-    }
-    printf(")");
-}
-
-int main() {
-    // Definindo e inicializando os vetores
-    myarg_t args;
-    double resultado;
-    printf("--------------------THREADS PARALELAS--------------------\n");
-    printf("Informe o tamanho do PRIMEIRO vetor:\n");
-    scanf("%d",&args.tam1);
-    
-    /// ALOCANDO MEMÓRIA PRO PRIMEIRO VETOR
-    args.vetor1 = (double *)malloc(args.tam1 * sizeof(double));
-    if (args.vetor1 == NULL) {
-        printf("Erro de alocação de memória!\n");
-        return 1;
-    }
-    /// ALOCANDO MEMÓRIA PRO PRIMEIRO VETOR
-
-    printf("\nInforme os %d números do PRIMEIRO vetor:\n", args.tam1);
-    for (int i = 0; i < args.tam1; i++) {
-        printf("Vetor1[%d]: ", i);
-        scanf("%lf", &args.vetor1[i]);
-    }
-
-    printf("------------------------------------");
-
-    printf("\nInforme o tamanho do SEGUNDO vetor: \n");
-    scanf("%d",&args.tam2);
- 
-
-
-    /// ALOCANDO MEMÓRIA PRO SEGUNDO VETOR
-    args.vetor2 = (double *)malloc(args.tam2 * sizeof(double));
-    if (args.vetor2 == NULL) {
-        printf("Erro de alocação de memória!\n");
-        free(args.vetor1); // Liberar o primeiro vetor também
-        return 1;
-    }
-    /// ALOCANDO MEMÓRIA PRO SEGUNDO VETOR
-
-    printf("\nInforme os %d números do SEGUNDO vetor:\n", args.tam2);
-    for (int i = 0; i < args.tam2; i++) {
-        printf("Vetor2[%d]: ", i);
-        scanf("%lf", &args.vetor2[i]);
-    }
-
-    /*int threadNumero = 0;
-    printf("\n-----> THREADS <-----\n");
-    printf("Quantas threads você deseja criar para rodar o algoritmo?\n");
-    printf("Número de threads:  ");
-    scanf("%d", &threadNumero); 
-
-    pthread_t p[threadNumero];
-    int rc;*/
-
-
-    
-
-    printf("------------------------------------");
-
-    // Imprimindo o resultado
-    printf("\n--- Resultado do Produto Escalar ---\n");
-   
-    /*resultado = calcularProdutoEscalar(
-        args.vetor1, args.tam1, 
-        args.vetor2, args.tam2
-    );*/
-    pthread_t p;
-    int rc = pthread_create(&p, NULL, mythread, &args); 
-    if (rc != 0) {
-        fprintf(stderr, "Erro ao criar a thread: %d\n", rc);
-        // Liberação de memória em caso de falha na criação da thread
-        free(args.vetor1);
-        free(args.vetor2);
+    if (argc < 3) {
+        fprintf(stderr, "Uso: %s <tamanho_vetor> <num_threads>\n", argv[0]);
+        fprintf(stderr, "Exemplo: %s 1000000 4\n", argv[0]);
         return 1;
     }
 
-    pthread_join(p, NULL);// main espera a thread p terminar o cálculo
+    char *endptr = NULL;
+    long val_n = strtol(argv[1], &endptr, 10);
+    if (endptr == argv[1] || val_n <= 0) {
+        fprintf(stderr, "Tamanho do vetor inválido: %s\n", argv[1]);
+        return 1;
+    }
+    tam_vetor = (int) val_n;
 
-    printf("O Produto Escalar é: **%.2lf**\n", args.produto_escalar);
+    endptr = NULL;
+    long val_p = strtol(argv[2], &endptr, 10);
+    if (endptr == argv[2] || val_p <= 0) {
+        fprintf(stderr, "Número de threads inválido: %s\n", argv[2]);
+        return 1;
+    }
+    num_threads = (int) val_p;
 
-    // Liberar a memória alocada
-    free(args.vetor1);
-    free(args.vetor2);
+    if (num_threads > tam_vetor) {
+        num_threads = tam_vetor;
+        if (num_threads < 1) num_threads = 1;
+        printf("[INFO] Ajustando threads para %d (<= tam_vetor)\n", num_threads);
+    }
 
-    
+    printf("[INFO] CPUs lógicos disponíveis: %ld\n", cpus);
+    printf("[INFO] Tamanho do vetor: %d, Threads solicitadas (ajustadas): %d\n",
+           tam_vetor, num_threads);
+
+    vetor1 = malloc((size_t)tam_vetor * sizeof(double));
+    vetor2 = malloc((size_t)tam_vetor * sizeof(double));
+    if (!vetor1 || !vetor2) {
+        perror("malloc");
+        free(vetor1); free(vetor2);
+        return 1;
+    }
+
+    // semente fixa para reproducibilidade (troque para time(NULL) se quiser variabilidade)
+    srand(42);
+    for (int i = 0; i < tam_vetor; ++i) {
+        vetor1[i] = (double)rand() / RAND_MAX;
+        vetor2[i] = (double)rand() / RAND_MAX;
+    }
+
+    // --- Versão sequencial (Ts) ---
+    struct timespec t0, t1;
+    double resultado_seq = 0.0;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (int i = 0; i < tam_vetor; ++i) resultado_seq += vetor1[i] * vetor2[i];
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    double ts = timespec_diff_seconds(t0, t1);
+
+    // --- Versão paralela (Tp) ---
+    pthread_t *threads = malloc((size_t)num_threads * sizeof(pthread_t));
+    thread_arg_t *args = malloc((size_t)num_threads * sizeof(thread_arg_t));
+    if (!threads || !args) {
+        perror("malloc threads/args");
+        free(vetor1); free(vetor2); free(threads); free(args);
+        return 1;
+    }
+
+    int base = tam_vetor / num_threads;
+    int resto = tam_vetor % num_threads;
+    int offset = 0;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (int t = 0; t < num_threads; ++t) {
+        int end = offset + base + (t < resto ? 1 : 0);
+        args[t].vetor1 = vetor1;
+        args[t].vetor2 = vetor2;
+        args[t].start_index = offset;
+        args[t].end_index = end;
+        args[t].partial_sum = 0.0;
+        int rc = pthread_create(&threads[t], NULL, calcularProdutoEscalarParalelo, &args[t]);
+        if (rc != 0) {
+            fprintf(stderr, "pthread_create failed: %s\n", strerror(rc));
+            // ajusta num_threads para aguardar só os já criados
+            num_threads = t;
+            break;
+        }
+        offset = end;
+    }
+
+    double resultado_paralelo = 0.0;
+    for (int t = 0; t < num_threads; ++t) {
+        int rc = pthread_join(threads[t], NULL);
+        if (rc != 0) {
+            fprintf(stderr, "pthread_join failed: %s\n", strerror(rc));
+        } else {
+            resultado_paralelo += args[t].partial_sum;
+        }
+    }
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    double tp = timespec_diff_seconds(t0, t1);
+
+    printf("\n--- Resultados ---\n");
+    printf("Tamanho do vetor: %d\n", tam_vetor);
+    printf("Threads usadas: %d\n", num_threads);
+    printf("Resultado sequencial: %.12f\n", resultado_seq);
+    printf("Resultado paralelo:   %.12f\n", resultado_paralelo);
+    printf("Tempo sequencial Ts: %.6f s\n", ts);
+    printf("Tempo paralelo   Tp: %.6f s\n", tp);
+    printf("Speedup Sp = Ts/Tp: %.6f\n", tp > 0.0 ? ts / tp : 0.0);
+    printf("[INFO] CPUs lógicos disponíveis: %ld\n", cpus);
+
+    free(vetor1); free(vetor2); free(threads); free(args);
     return 0;
 }
-
