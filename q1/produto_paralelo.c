@@ -1,4 +1,5 @@
-// produto_escalar_paralelo.c
+//  gcc -std=c11 -Wall -Wextra -pedantic -O2 -pthread produto_paralelo.c -o prod
+//./prodseq 10000 4
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <string.h>
@@ -25,6 +26,15 @@ void *calcularProdutoEscalarParalelo(void *arg) {
     ta->partial_sum = soma_local;
     return NULL;
 }
+
+//atribui cada parte a uma thread para calcular sub-somas 
+// (multiplicação e soma de componentes), e depois uma 
+// thread principal ou outra thread combina essas sub-somas 
+// para obter o resultado final, usando bibliotecas como 
+// pthreads para gerenciar as threads e garantir a 
+// sincronização (como pthread_join), o que otimiza o 
+// cálculo para grandes vetores ao paralelizar as operações. 
+
 
 static double timespec_diff_seconds(struct timespec a, struct timespec b) {
     return (b.tv_sec - a.tv_sec) + (b.tv_nsec - a.tv_nsec) / 1e9;
@@ -64,9 +74,6 @@ int main(int argc, char *argv[]) {
         printf("[INFO] Ajustando threads para %d (<= tam_vetor)\n", num_threads);
     }
 
-    printf("[INFO] CPUs lógicos disponíveis: %ld\n", cpus);
-    printf("[INFO] Tamanho do vetor: %d, Threads solicitadas (ajustadas): %d\n",
-           tam_vetor, num_threads);
 
     vetor1 = malloc((size_t)tam_vetor * sizeof(double));
     vetor2 = malloc((size_t)tam_vetor * sizeof(double));
@@ -83,15 +90,10 @@ int main(int argc, char *argv[]) {
         vetor2[i] = (double)rand() / RAND_MAX;
     }
 
-    // --- Versão sequencial (Ts) ---
-    struct timespec t0, t1;
-    double resultado_seq = 0.0;
-    clock_gettime(CLOCK_MONOTONIC, &t0);
-    for (int i = 0; i < tam_vetor; ++i) resultado_seq += vetor1[i] * vetor2[i];
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    double ts = timespec_diff_seconds(t0, t1);
+    
 
     // --- Versão paralela (Tp) ---
+    struct timespec t0, t1;   
     pthread_t *threads = malloc((size_t)num_threads * sizeof(pthread_t));
     thread_arg_t *args = malloc((size_t)num_threads * sizeof(thread_arg_t));
     if (!threads || !args) {
@@ -132,18 +134,24 @@ int main(int argc, char *argv[]) {
         }
     }
     clock_gettime(CLOCK_MONOTONIC, &t1);
+
     double tp = timespec_diff_seconds(t0, t1);
 
-    printf("\n--- Resultados ---\n");
-    printf("Tamanho do vetor: %d\n", tam_vetor);
-    printf("Threads usadas: %d\n", num_threads);
-    printf("Resultado sequencial: %.12f\n", resultado_seq);
-    printf("Resultado paralelo:   %.12f\n", resultado_paralelo);
-    printf("Tempo sequencial Ts: %.6f s\n", ts);
-    printf("Tempo paralelo   Tp: %.6f s\n", tp);
-    printf("Speedup Sp = Ts/Tp: %.6f\n", tp > 0.0 ? ts / tp : 0.0);
-    printf("[INFO] CPUs lógicos disponíveis: %ld\n", cpus);
+    printf("\nCSV_DATA;");
+    printf("computador: linux_erin;");
+    printf(" tam_vetor: %d;", tam_vetor);
+    printf(" n_threads: %d;", num_threads);
+    printf(" n_cpus: %ld;", cpus);
+    printf(" resultado: %.12f;", resultado_paralelo);
+    printf(" tp: %.6f;", tp); ///tempo total paralelo em s
+    printf(" ts: 0.0;"); ///tempo total sequencial em s
+    printf("\n");
+    
 
     free(vetor1); free(vetor2); free(threads); free(args);
     return 0;
 }
+
+
+// gcc -std=c11 -Wall -Wextra -pedantic -O2 -pthread produto_paralelo.c -o prod
+// ./prod
