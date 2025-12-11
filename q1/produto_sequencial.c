@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     printf("CPUS: %ld\n",cpus);*/
 
     printf("\nCSV_DATA;");
-    printf("computador: linux_erin;");
+    printf("computador: gitspace_erin;");
     printf(" tam_vetor: %d;", tam_vetor);
     printf(" n_threads: 1;"); // nao tem multithreading
     printf(" n_cpus: %ld;", cpus);

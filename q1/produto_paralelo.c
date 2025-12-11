@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
     double tp = timespec_diff_seconds(t0, t1);
 
     printf("\nCSV_DATA;");
-    printf("computador: linux_erin;");
+    printf("computador: gitspace_erin;");
     printf(" tam_vetor: %d;", tam_vetor);
     printf(" n_threads: %d;", num_threads);
     printf(" n_cpus: %ld;", cpus);
