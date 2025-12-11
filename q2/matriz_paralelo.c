@@ -1,4 +1,4 @@
-// gcc -std=c11 -Wall -Wextra -pedantic -O2 -pthread matriz_paralelo.c -o matpar
+// gcc -std=c11 -Wall -Wextra -pedantic -O3 -pthread matriz_paralelo.c -o matpar
 // ./matpar 1000 4
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < N*N; i+=N) check_sum += C[i];
 
     printf("\nCSV_DATA;");
-    printf("computador: gitspace_erin;");
+    printf("computador: linux_erin_6;");
     printf(" tam_matriz: %d;", N);
     printf(" n_threads: %d;", num_threads);
     printf(" n_cpus: %ld;", cpus);

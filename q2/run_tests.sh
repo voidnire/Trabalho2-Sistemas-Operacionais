@@ -5,9 +5,9 @@
 # --- 1. Compilação ---
 echo "Compilando os programas..."
 # Compila o Sequencial
-gcc -std=c11 -Wall -O2 matriz_sequencial.c -o matseq
+gcc -std=c11 -Wall -O3 matriz_sequencial.c -o matseq
 # Compila o Paralelo
-gcc -std=c11 -Wall -O2 -pthread matriz_paralelo.c -o matpar
+gcc -std=c11 -Wall -O3 -pthread matriz_paralelo.c -o matpar
 
 # Verifica se compilou
 if [[ ! -f "./matseq" ]] || [[ ! -f "./matpar" ]]; then
@@ -19,7 +19,7 @@ echo "Iniciando os testes..."
 
 # --- 2. Definição dos Parâmetros ---
 # Tamanhos do vetor
-TAMANHOS=(5000 10000 100000 500000 1000000)
+TAMANHOS=(500 1000 2000 3000)
 # Quantidade de threads
 THREADS=(4 8 16 32)
 
