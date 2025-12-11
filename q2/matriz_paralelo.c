@@ -18,7 +18,7 @@ typedef struct {
     int end_row;   // Linha final (exclusiva)
 } thread_arg_t;
 
-// Função Worker (Faz o trabalho pesado)
+/* Função Worker (Faz o trabalho pesado)
 void *multiplicarMatrizParalelo(void *arg) {
     thread_arg_t *ta = (thread_arg_t *) arg;
     int N = ta->N;
@@ -31,6 +31,30 @@ void *multiplicarMatrizParalelo(void *arg) {
                 soma += ta->A[i * N + k] * ta->B[k * N + j];
             }
             ta->C[i * N + j] = soma;
+        }
+    }
+    return NULL;
+}*/
+
+// Função Worker OTIMIZADA (Usa a matriz B já transposta)
+void *multiplicarMatrizParalelo(void *arg) {
+    thread_arg_t *ta = (thread_arg_t *) arg;
+    int N = ta->N;
+    double *A = ta->A;
+    double *B_T = ta->B; // O ponteiro recebido JÁ É A TRANSPOSTA
+    double *C = ta->C;
+
+    // Loop apenas nas linhas designadas para esta thread
+    for (int i = ta->start_row; i < ta->end_row; i++) {
+        for (int j = 0; j < N; j++) {
+            double soma = 0.0;
+            for (int k = 0; k < N; k++) {
+                // OTIMIZAÇÃO AQUI:
+                // A[i][k] * B_T[j][k] (Acesso linear em ambas!)
+                // Note que acessamos B_T usando [j * N + k]
+                soma += A[i * N + k] * B_T[j * N + k];
+            }
+            C[i * N + j] = soma;
         }
     }
     return NULL;
@@ -79,6 +103,21 @@ int main(int argc, char *argv[]) {
         B[i] = (double)rand() / RAND_MAX;
     }
 
+    // Aloca matriz para a transposta de B
+    // colunas de B em linhas de B_T para acesso rápido na thread.
+    double *B_T = (double *)malloc(N * N * sizeof(double));
+    if (!B_T) {
+        perror("Erro de alocação B_T");
+        free(A); free(B); free(C);
+        return 1;
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            B_T[j * N + i] = B[i * N + j];
+        }
+    }
+
     // --- Versão Paralela (Tp) ---
     struct timespec t0, t1;
     pthread_t *threads = malloc(num_threads * sizeof(pthread_t));
@@ -95,7 +134,7 @@ int main(int argc, char *argv[]) {
         int rows = base + (t < resto ? 1 : 0); // Distribui o resto
         
         args[t].A = A;
-        args[t].B = B;
+        args[t].B = B_T; // TRANSPOSTA
         args[t].C = C;
         args[t].N = N;
         args[t].start_row = offset;
@@ -118,7 +157,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < N*N; i+=N) check_sum += C[i];
 
     printf("\nCSV_DATA;");
-    printf("computador: linux_erin;");
+    printf("computador: gitspace_erin;");
     printf(" tam_matriz: %d;", N);
     printf(" n_threads: %d;", num_threads);
     printf(" n_cpus: %ld;", cpus);
@@ -127,7 +166,7 @@ int main(int argc, char *argv[]) {
     printf(" ts: 0.0;");
     printf("\n");
 
-    free(A); free(B); free(C);
+    free(A); free(B); free(C); free(B_T);
     free(threads); free(args);
     return 0;
 }

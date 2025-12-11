@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
     N = (int) val_n;
 
     // Alocação como vetor linear (N*N) para evitar fragmentação de memória
+    
     A = (double *)malloc(N * N * sizeof(double));
     B = (double *)malloc(N * N * sizeof(double));
     C = (double *)malloc(N * N * sizeof(double));
@@ -40,11 +41,22 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+
+    
     // Inicialização (Semente fixa 42 para consistência)
     srand(42); 
     for (int i = 0; i < N * N; i++) {
         A[i] = (double)rand() / RAND_MAX;
         B[i] = (double)rand() / RAND_MAX;
+    }
+
+    // Aloca matriz para a transposta de B
+    // acessa endereços de memória contíguos
+    double *B_T = (double *)malloc(N * N * sizeof(double));
+    if (!B_T) {
+        perror("Erro de alocação B_T");
+        free(A); free(B); free(C);
+        return 1;
     }
 
     // Medição de Tempo
@@ -53,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Multiplicação Clássica O(N^3)
     // C[i][j] += A[i][k] * B[k][j]
-    // Mapeamento linear: Mat[i][j] = Mat[i * N + j]
+    /* Mapeamento linear: Mat[i][j] = Mat[i * N + j]
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             double soma = 0.0;
@@ -62,7 +74,33 @@ int main(int argc, char *argv[]) {
             }
             C[i * N + j] = soma;
         }
+    }*/
+
+    // 1. TRANSPOSIÇÃO DE B (O(N^2))
+    // Transforma colunas de B em linhas de B_T
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            // B_T[linha j][coluna i] = B[linha i][coluna j]
+            B_T[j * N + i] = B[i * N + j];
+        }
     }
+
+    // 2. MULTIPLICAÇÃO OTIMIZADA (O(N^3))
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            double soma = 0.0;
+            // Agora 'k' percorre as colunas de A e as LINHAS de B_T
+            // Ambos os acessos são sequenciais na memória (Acesso rápido!)
+            for (int k = 0; k < N; k++) {
+                // ANTES:  A[i * N + k] * B[k * N + j]  <- Pulo de memória em B
+                // AGORA:  A[i * N + k] * B_T[j * N + k] <- Acesso contíguo em B_T
+                soma += A[i * N + k] * B_T[j * N + k];
+            }
+            C[i * N + j] = soma;
+        }
+    }
+
+    
 
     clock_gettime(CLOCK_MONOTONIC, &end);
     double ts = timespec_diff_seconds(start, end);
@@ -72,7 +110,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < N*N; i+=N) check_sum += C[i]; // Soma apenas diagonal/amostra pra ser rápido
 
     printf("\nCSV_DATA;");
-    printf("computador: linux_erin;");
+    printf("computador: gitspace_erin;");
     printf(" tam_matriz: %d;", N);
     printf(" n_threads: 1;");
     printf(" n_cpus: %ld;", cpus);
@@ -81,6 +119,6 @@ int main(int argc, char *argv[]) {
     printf(" ts: %.6f;", ts);
     printf("\n");
 
-    free(A); free(B); free(C);
+    free(A); free(B); free(C); free(B_T);
     return 0;
 }
