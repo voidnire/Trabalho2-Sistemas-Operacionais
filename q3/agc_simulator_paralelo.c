@@ -39,7 +39,7 @@ void enableRawMode() {
 void print_log_seguro(char* msg, long thread_id, int tipo_msg) {
     pthread_mutex_lock(&mutex_io);
 
-    printf("\r\033[K"); // Limpa linha
+    printf("\r\033[K"); 
 
     // Cores
     if (tipo_msg == 1) printf("\033[1;31m");      // Vermelho
@@ -55,7 +55,7 @@ void print_log_seguro(char* msg, long thread_id, int tipo_msg) {
     else
         printf("[SISTEMA] %s\033[0m\n", msg);
 
-    // Restaura o prompt e o que o usuário estava digitando
+   
     printf("COMANDO > %s", input_buffer);
     fflush(stdout);
 
@@ -66,7 +66,7 @@ long get_thread_id() {
     return syscall(SYS_gettid) % 1000;
 }
 
-// --- THREAD DE TELEMETRIA ---
+//  THREAD DE TELEMETRIA 
 void* thread_telemetria(void* arg) {
     long id = get_thread_id();
     char msg[100];
@@ -103,7 +103,7 @@ void* thread_telemetria(void* arg) {
     return NULL;
 }
 
-// --- THREAD DE MANOBRA ---
+//  THREAD DE MANOBRA 
 void* thread_manobra(void* arg) {
     int duracao = *((int*)arg);
     free(arg); 
@@ -126,7 +126,7 @@ void* thread_manobra(void* arg) {
     return NULL;
 }
 
-// --- THREAD DOWNLINK ---
+//  THREAD DOWNLINK 
 void* thread_downlink(void* arg) {
     char msg[100];
     
@@ -155,7 +155,7 @@ void imprimir_interface() {
     
     printf("\r\033[K");
     printf("-------------------------------------------------\n");
-    printf("   AGC - SATELITE MULTITASK (VERSION FINAL)      \n");
+    printf("   AGC - SATELITE MULTITASK                      \n");
     printf("-------------------------------------------------\n");
     printf(" BATERIA: %d%%  |  TEMP: %d C  |  STATUS: %s\n", bateria, temperatura, status_sistema);
     printf("-------------------------------------------------\n");
@@ -196,10 +196,10 @@ int main() {
             pthread_mutex_lock(&mutex_io); 
 
             if (c == '\n') { // ENTER
-                printf("\n"); // Pula linha para deixar o comando digitado lá
+                printf("\n"); 
                 input_buffer[input_pos] = '\0'; 
                 
-                pthread_mutex_unlock(&mutex_io); // Libera tela para threads imprimirem
+                pthread_mutex_unlock(&mutex_io);
 
                 // PROCESSAMENTO DE COMANDO
                 if (strlen(input_buffer) > 0) {
@@ -222,9 +222,6 @@ int main() {
                         sprintf(status_sistema, "SISTEMA RECARREGADO.");
                         pthread_mutex_unlock(&mutex_estado);
 
-                        // --- FIX VISUAL AQUI ---
-                        // Usamos printf direto, protegido por mutex, 
-                        // sem restaurar o input_buffer (porque já demos Enter)
                         pthread_mutex_lock(&mutex_io);
                         printf("\r\033[K\033[1;34m[SISTEMA] Baterias recarregadas.\033[0m\n");
                         pthread_mutex_unlock(&mutex_io);
@@ -236,14 +233,13 @@ int main() {
                         simulacao_rodando = 0;
                     }
                     else {
-                        // Para erro também usamos print direto
+                      
                         pthread_mutex_lock(&mutex_io);
                         printf("\r\033[K\033[1;31m[ERRO] Comando desconhecido.\033[0m\n");
                         pthread_mutex_unlock(&mutex_io);
                     }
                 }
 
-                // Limpa Buffer e Reimprime Prompt
                 pthread_mutex_lock(&mutex_io);
                 memset(input_buffer, 0, sizeof(input_buffer));
                 input_pos = 0;
@@ -270,5 +266,4 @@ int main() {
     free(threads);
     pthread_mutex_destroy(&mutex_estado);
     pthread_mutex_destroy(&mutex_io);
-    return 0;
 }
