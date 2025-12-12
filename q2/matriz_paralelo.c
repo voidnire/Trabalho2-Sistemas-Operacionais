@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < N*N; i+=N) check_sum += C[i];
 
     printf("\nCSV_DATA;");
-    printf("computador: linux_erin_6;");
+    printf("computador: gitspace_erin_2;");
     printf(" tam_matriz: %d;", N);
     printf(" n_threads: %d;", num_threads);
     printf(" n_cpus: %ld;", cpus);
